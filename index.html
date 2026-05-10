@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OdedSVR Time Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- עיצוב בסיסי ורקע --- */
+        body {
+            font-family: 'Varela Round', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-color: #0b0e14;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        /* רקע כללי נקי - הדמויות מובנות בתוכו מאחורה */
+        .bg-img-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -3;
+        }
+
+        .bg-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.5); /* שומר על הצבעים היפים של הרקע המקורי */
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .neon-text {
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .glow-blue {
+            color: #fff;
+            text-shadow:
+                0 0 7px #fff,
+                0 0 10px #fff,
+                0 0 21px #fff,
+                0 0 42px #0ff,
+                0 0 82px #0ff;
+        }
+
+        /* מסך פתיחה */
+        #intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #05070a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1s ease-out;
+        }
+
+        #intro-screen h1 {
+            font-size: 5rem;
+            animation: pulsate 2.5s infinite alternate;
+        }
+
+        /* מסך כניסה */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            transition: transform 1s cubic-bezier(0.77, 0, 0.175, 1), opacity 1s ease-out;
+        }
+
+        .login-content {
+            background: rgba(11, 14, 20, 0.9);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 0 35px rgba(0, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            width: 350px;
+        }
+
+        .login-content h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            margin-top: 0;
+        }
+
+        .login-content input {
+            background-color: rgba(20, 25, 35, 0.9);
+            border: 2px solid rgba(0, 255, 255, 0.4);
+            padding: 12px;
+            color: #0ff;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .login-content input:focus {
+            outline: none;
+            border-color: #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+        }
+
+        .login-content button {
+            background-color: #0ff;
+            color: #05070a;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .login-content button:hover {
+            background-color: #33ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+        }
+
+        .error-text {
+            color: #ff3333;
+            font-weight: bold;
+            margin-top: 15px;
+            text-shadow: 0 0 10px #ff0000;
+        }
+
+        /* מסך ראשי */
+        #main-screen {
+            box-sizing: border-box;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .calendar-container {
+            background: rgba(11, 14, 20, 0.85);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 0 35px rgba(0, 255, 255, 0.25);
+            width: 95%;
+            max-width: 1100px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            margin-bottom: 2rem;
+            z-index: 5;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .calendar-header h2 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .week-nav-btn {
+            background: none;
+            border: 2px solid rgba(0, 255, 255, 0.4);
+            color: #0ff;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .week-nav-btn:hover {
+            border-color: #0ff;
+            background-color: rgba(0, 255, 255, 0.05);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .calendar-board {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1rem;
+        }
+
+        .day-column {
+            background: rgba(20, 25, 35, 0.7);
+            padding: 1.5rem 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 180px;
+            justify-content: space-between;
+        }
+
+        .day-name {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .add-live-btn {
+            background: none;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 2rem;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-live-btn:hover {
+            border-color: #0ff;
+            color: #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        .view-live-btn {
+            background-color: rgba(0, 255, 255, 0.1);
+            color: #0ff;
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+            margin-top: auto;
+        }
+
+        .view-live-btn:hover {
+            background-color: rgba(0, 255, 255, 0.25);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+        }
+
+        .credits-footer {
+            margin-top: auto;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 2px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .credits-footer span {
+            color: #0ff;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+        }
+
+        /* מודלים */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(5, 7, 10, 0.85);
+            z-index: 102;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            background: rgba(11, 14, 20, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid #0ff;
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+            box-shadow: 0 0 35px rgba(0, 255, 255, 0.4);
+            backdrop-filter: blur(12px);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 2.2rem;
+            color: rgba(0, 255, 255, 0.5);
+            cursor: pointer;
+        }
+
+        .close-modal:hover {
+            color: #0ff;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            background-color: rgba(20, 25, 35, 0.8);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            padding: 10px;
+            color: #0ff;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+
+        .topic-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .topic-row input[type="text"] {
+            flex: 2;
+        }
+
+        .topic-row input.time-input {
+            flex: 1;
+            text-align: center;
+        }
+
+        .topics-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 0 5px;
+        }
+
+        #add-topic-btn {
+            background: none;
+            border: 2px solid #0ff;
+            color: #0ff;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-family: inherit;
+            margin-top: 1rem;
+        }
+
+        #save-live-btn {
+            background-color: #0ff;
+            color: #05070a;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            width: 100%;
+        }
+
+        #view-live-details h4 {
+            margin-top: 0;
+            line-height: 1.6;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .view-topic-item {
+            background-color: rgba(20, 25, 35, 0.8);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            display: flex;
+            justify-content: space-between;
+            cursor: context-menu;
+            user-select: none;
+        }
+
+        .view-topic-item:hover {
+            border-color: rgba(0, 255, 255, 0.5);
+            background-color: rgba(25, 32, 45, 0.9);
+        }
+
+        /* תפריט לחיצה ימנית (Context Menu) */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: #11141a;
+            border: 1px solid #0ff;
+            border-radius: 8px;
+            z-index: 10000;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+            list-style: none;
+            padding: 6px 0;
+            margin: 0;
+            min-width: 150px;
+        }
+
+        .context-menu li {
+            padding: 10px 15px;
+            color: #ccc;
+            cursor: pointer;
+            text-align: right;
+            font-size: 0.95rem;
+        }
+
+        .context-menu li:hover {
+            background: rgba(0, 255, 255, 0.15);
+            color: #fff;
+        }
+
+        #mouse-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background-color: rgba(0, 255, 255, 0.03);
+            filter: blur(45px);
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes pulsate {
+            0% { text-shadow: 0 0 10px #fff, 0 0 20px #0ff; }
+            100% { text-shadow: 0 0 20px #fff, 0 0 40px #0ff; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen">
+        <h1 class="neon-text glow-blue">OdedSVR</h1>
+    </div>
+
+    <div id="login-screen" class="hidden">
+        <div class="bg-img-container">
+            <img src="SGEH.jpg" alt="Background" class="bg-img">
+        </div>
+
+        <div class="login-content">
+            <h1 class="neon-text glow-blue">כניסה</h1>
+            <input type="password" id="access-code" placeholder="הקלד/י קוד">
+            <button id="login-btn">כניסה</button>
+            <p id="error-message" class="error-text hidden">הקוד שגוי. נסה שנית.</p>
+        </div>
+    </div>
+
+    <div id="main-screen" class="hidden">
+        <div class="bg-img-container">
+            <img src="SGEH.jpg" alt="Background" class="bg-img">
+        </div>
+
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <button id="prev-week" class="week-nav-btn">&gt;</button>
+                <h2 class="neon-text glow-blue" id="current-week-display">שבוע נוכחי</h2>
+                <button id="next-week" class="week-nav-btn">&lt;</button>
+            </div>
+
+            <div class="calendar-board">
+                </div>
+        </div>
+        
+        <div class="credits-footer">
+            CREATED BY <span>ISY ITAMAR</span>
+        </div>
+    </div>
+
+    <div id="add-live-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 class="neon-text glow-blue" id="modal-day-name">הוספת לייב</h2>
+            
+            <div class="form-group">
+                <label for="live-name">שם הלייב:</label>
+                <input type="text" id="live-name" placeholder="הכנס את שם הלייב">
+            </div>
+
+            <div class="form-group">
+                <label for="live-date">תאריך הלייב:</label>
+                <input type="date" id="live-date">
+            </div>
+
+            <div class="form-group">
+                <label>נושאים בלייב:</label>
+                <div id="topics-container">
+                    <div class="topics-header">
+                        <span>נושא</span>
+                        <span>זמן</span>
+                    </div>
+                </div>
+                <button id="add-topic-btn" type="button">+ הוסף נושא</button>
+            </div>
+            
+            <button id="save-live-btn" type="button">לשמור נושאים</button>
+        </div>
+    </div>
+
+    <div id="view-live-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 class="neon-text glow-blue" id="view-day-name">נושאי לייב</h2>
+            <div id="view-live-details">
+                </div>
+        </div>
+    </div>
+
+    <ul id="custom-context-menu" class="context-menu">
+        <li id="menu-delete-option">❌ למחוק את הלייב</li>
+    </ul>
+
+    <div id="mouse-glow"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+      // נתוני ה-Firebase שלך
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      };
+      
+      if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+          firebase.initializeApp(firebaseConfig);
+      }
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const introScreen = document.getElementById('intro-screen');
+            const loginScreen = document.getElementById('login-screen');
+            const mainScreen = document.getElementById('main-screen');
+            const accessCodeInput = document.getElementById('access-code');
+            const loginBtn = document.getElementById('login-btn');
+            const errorMessage = document.getElementById('error-message');
+            const calendarBoard = document.querySelector('.calendar-board');
+            const currentWeekDisplay = document.getElementById('current-week-display');
+            const prevWeekBtn = document.getElementById('prev-week');
+            const nextWeekBtn = document.getElementById('next-week');
+
+            const addLiveModal = document.getElementById('add-live-modal');
+            const viewLiveModal = document.getElementById('view-live-modal');
+            const modalDayName = document.getElementById('modal-day-name');
+            const liveNameInput = document.getElementById('live-name');
+            const liveDateInput = document.getElementById('live-date');
+            const topicsContainer = document.getElementById('topics-container');
+            const addTopicBtn = document.getElementById('add-topic-btn');
+            const saveLiveBtn = document.getElementById('save-live-btn');
+            const viewDayName = document.getElementById('view-day-name');
+            const viewLiveDetails = document.getElementById('view-live-details');
+            const closeModals = document.querySelectorAll('.close-modal');
+
+            const contextMenu = document.getElementById('custom-context-menu');
+            const deleteOption = document.getElementById('menu-delete-option');
+            const mouseGlow = document.getElementById('mouse-glow');
+
+            let currentDaySelected = ''; 
+            let currentWeekDate = new Date(); 
+            let targetKeyToDelete = ''; 
+
+            const daysHebrew = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+            const daysEnglish = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+            // עוקב עכבר
+            document.addEventListener('mousemove', (e) => {
+                mouseGlow.style.left = `${e.clientX}px`;
+                mouseGlow.style.top = `${e.clientY}px`;
+            });
+
+            // סגירת תפריט לחיצה ימנית בלחיצה מחוצה לו
+            document.addEventListener('click', (e) => {
+                if (!contextMenu.contains(e.target)) {
+                    contextMenu.style.display = 'none';
+                }
+            });
+
+            // מעבר מסך פתיחה
+            setTimeout(() => {
+                introScreen.style.opacity = '0';
+                setTimeout(() => {
+                    introScreen.classList.add('hidden');
+                    loginScreen.classList.remove('hidden');
+                }, 1000);
+            }, 2500);
+
+            // לוגין
+            loginBtn.addEventListener('click', checkCode);
+            accessCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkCode();
+            });
+
+            function checkCode() {
+                if (accessCodeInput.value === 'OdedSVRtime') {
+                    loginScreen.style.transform = 'translateY(-100%)';
+                    loginScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loginScreen.classList.add('hidden');
+                        mainScreen.classList.remove('hidden');
+                        loadCalendarData();
+                    }, 600);
+                } else {
+                    errorMessage.classList.remove('hidden');
+                }
+            }
+
+            // חישוב מפתח שבוע נעול ומדויק לפי יום ראשון של אותו שבוע
+            function getWeekKey(date, dayEnglish) {
+                const tempDate = new Date(date);
+                const dayIndex = tempDate.getDay();
+                // מציאת יום ראשון של השבוע הנוכחי
+                tempDate.setDate(tempDate.getDate() - dayIndex);
+                const year = tempDate.getFullYear();
+                const month = String(tempDate.getMonth() + 1).padStart(2, '0');
+                const day = String(tempDate.getDate()).padStart(2, '0');
+                
+                // מפתח מיוחד וייחודי לכל שבוע: YYYY-MM-DD-day
+                return `week_${year}-${month}-${day}_${dayEnglish}`;
+            }
+
+            function createCalendar(date) {
+                calendarBoard.innerHTML = '';
+                const startOfWeek = new Date(date);
+                const dayIndex = startOfWeek.getDay();
+                startOfWeek.setDate(startOfWeek.getDate() - dayIndex);
+
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(endOfWeek.getDate() + 6);
+                
+                currentWeekDisplay.innerText = `שבוע: ${startOfWeek.getDate()}/${startOfWeek.getMonth() + 1} - ${endOfWeek.getDate()}/${endOfWeek.getMonth() + 1}`;
+
+                for (let i = 0; i < 7; i++) {
+                    const dayColumn = document.createElement('div');
+                    dayColumn.classList.add('day-column');
+                    dayColumn.dataset.day = daysEnglish[i];
+
+                    const dayNameElement = document.createElement('div');
+                    dayNameElement.classList.add('day-name', 'neon-text', 'glow-blue');
+                    dayNameElement.innerText = daysHebrew[i];
+                    dayColumn.appendChild(dayNameElement);
+
+                    const addLiveBtn = document.createElement('button');
+                    addLiveBtn.classList.add('add-live-btn');
+                    addLiveBtn.innerText = '+';
+                    addLiveBtn.addEventListener('click', () => openAddLiveModal(daysHebrew[i], daysEnglish[i]));
+                    dayColumn.appendChild(addLiveBtn);
+
+                    const viewLiveBtn = document.createElement('button');
+                    viewLiveBtn.classList.add('view-live-btn');
+                    viewLiveBtn.innerText = 'לראות נושאי לייב';
+                    viewLiveBtn.style.display = 'none'; 
+                    
+                    // אירוע צפייה בלייב (קליק שמאלי)
+                    viewLiveBtn.addEventListener('click', () => openViewLiveModal(daysHebrew[i], daysEnglish[i]));
+                    
+                    // אירוע פתיחת תפריט מחיקה (קליק ימני) ישירות על הכפתור בלוח!
+                    viewLiveBtn.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        targetKeyToDelete = getWeekKey(currentWeekDate, daysEnglish[i]);
+                        showContextMenu(e.clientX, e.clientY);
+                    });
+
+                    dayColumn.appendChild(viewLiveBtn);
+                    calendarBoard.appendChild(dayColumn);
+                }
+            }
+
+            prevWeekBtn.addEventListener('click', () => {
+                currentWeekDate.setDate(currentWeekDate.getDate() - 7);
+                createCalendar(currentWeekDate);
+                loadCalendarData();
+            });
+
+            nextWeekBtn.addEventListener('click', () => {
+                currentWeekDate.setDate(currentWeekDate.getDate() + 7);
+                createCalendar(currentWeekDate);
+                loadCalendarData();
+            });
+
+            createCalendar(currentWeekDate);
+
+            // סגירת מודלים
+            closeModals.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    addLiveModal.classList.add('hidden');
+                    viewLiveModal.classList.add('hidden');
+                    contextMenu.style.display = 'none';
+                });
+            });
+
+            function openAddLiveModal(dayHebrew, dayEnglish) {
+                currentDaySelected = dayEnglish;
+                modalDayName.innerText = `יום ${dayHebrew} - הוספת לייב`;
+                liveNameInput.value = '';
+                liveDateInput.value = '';
+                topicsContainer.innerHTML = `
+                    <div class="topics-header">
+                        <span>נושא</span>
+                        <span>זמן</span>
+                    </div>
+                `;
+                addLiveModal.classList.remove('hidden');
+            }
+
+            addTopicBtn.addEventListener('click', () => {
+                const topicRow = document.createElement('div');
+                topicRow.classList.add('topic-row');
+                topicRow.innerHTML = `
+                    <input type="text" placeholder="נושא בלייב">
+                    <input type="text" placeholder="00:00:00" class="time-input">
+                `;
+                topicsContainer.appendChild(topicRow);
+            });
+
+            // שמירת נתונים מנוטרלת זליגה לשבועות אחרים
+            saveLiveBtn.addEventListener('click', () => {
+                const liveName = liveNameInput.value.trim();
+                const liveDate = liveDateInput.value;
+                const topicRows = topicsContainer.querySelectorAll('.topic-row');
+                const topicsData = [];
+
+                if (!liveName || !liveDate) {
+                    alert('אנא מלא/י שם ותאריך בשביל לשמור.');
+                    return;
+                }
+
+                topicRows.forEach(row => {
+                    const textVal = row.querySelector('input[type="text"]').value.trim();
+                    const timeVal = row.querySelector('input.time-input').value.trim();
+                    if (textVal && timeVal) {
+                        topicsData.push({ topic: textVal, time: timeVal });
+                    }
+                });
+
+                const weekKey = getWeekKey(currentWeekDate, currentDaySelected);
+
+                const onComplete = (error) => {
+                    if (error) {
+                        alert("שגיאה בשמירת הנתונים.");
+                    } else {
+                        addLiveModal.classList.add('hidden');
+                        loadCalendarData();
+                    }
+                };
+
+                if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                    firebase.database().ref('live_tracker/' + weekKey).set({
+                        liveName: liveName,
+                        liveDate: liveDate,
+                        topics: topicsData
+                    }, onComplete);
+                } else {
+                    localStorage.setItem(weekKey, JSON.stringify({ liveName, liveDate, topics: topicsData }));
+                    onComplete(null);
+                }
+            });
+
+            // טעינת נתונים מדויקת בלבד לשבוע המוצג
+            function loadCalendarData() {
+                daysEnglish.forEach(day => {
+                    const weekKey = getWeekKey(currentWeekDate, day);
+                    const dayColumn = document.querySelector(`.day-column[data-day="${day}"]`);
+                    if (!dayColumn) return;
+                    const viewLiveBtn = dayColumn.querySelector('.view-live-btn');
+
+                    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                        firebase.database().ref('live_tracker/' + weekKey).once('value', (snapshot) => {
+                            if (snapshot.exists() && snapshot.val().liveName) {
+                                viewLiveBtn.style.display = 'block';
+                            } else {
+                                viewLiveBtn.style.display = 'none';
+                            }
+                        });
+                    } else {
+                        if (localStorage.getItem(weekKey)) {
+                            viewLiveBtn.style.display = 'block';
+                        } else {
+                            viewLiveBtn.style.display = 'none';
+                        }
+                    }
+                });
+            }
+
+            // צפייה בנושאי לייב
+            function openViewLiveModal(dayHebrew, dayEnglish) {
+                viewDayName.innerText = `יום ${dayHebrew} - נושאי לייב`;
+                viewLiveDetails.innerHTML = '<p>טוען נתונים...</p>';
+                viewLiveModal.classList.remove('hidden');
+
+                const weekKey = getWeekKey(currentWeekDate, dayEnglish);
+                targetKeyToDelete = weekKey; 
+
+                const renderData = (data) => {
+                    viewLiveDetails.innerHTML = '';
+                    if (data && data.liveName) {
+                        const headerInfo = document.createElement('h4');
+                        headerInfo.innerHTML = `שם הלייב: <span class="glow-blue">${data.liveName}</span><br>תאריך: ${data.liveDate}`;
+                        viewLiveDetails.appendChild(headerInfo);
+
+                        if (data.topics && data.topics.length > 0) {
+                            const listContainer = document.createElement('div');
+                            listContainer.innerHTML = '<div class="topics-header"><span>נושא</span><span>זמן</span></div>';
+                            
+                            data.topics.forEach(item => {
+                                const row = document.createElement('div');
+                                row.classList.add('view-topic-item');
+                                row.innerHTML = `<span>${item.topic}</span><span style="color:#0ff; font-weight:bold;">${item.time}</span>`;
+                                
+                                // לחיצה ימנית לפתיחת מחיקה גם מתוך המודל
+                                row.addEventListener('contextmenu', (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    showContextMenu(e.clientX, e.clientY);
+                                });
+
+                                listContainer.appendChild(row);
+                            });
+                            viewLiveDetails.appendChild(listContainer);
+                        } else {
+                            viewLiveDetails.innerHTML += '<p>לא הוזנו נושאים ללייב זה.</p>';
+                        }
+                    } else {
+                        viewLiveDetails.innerHTML = '<p>אין נתונים שמורים עבור יום זה.</p>';
+                    }
+                };
+
+                if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                    firebase.database().ref('live_tracker/' + weekKey).once('value', (snapshot) => {
+                        renderData(snapshot.val());
+                    });
+                } else {
+                    const local = localStorage.getItem(weekKey);
+                    renderData(local ? JSON.parse(local) : null);
+                }
+            }
+
+            // תצוגת תפריט המחיקה במקש ימני
+            function showContextMenu(clientX, clientY) {
+                contextMenu.style.left = `${clientX}px`;
+                contextMenu.style.top = `${clientY}px`;
+                contextMenu.style.display = 'block';
+            }
+
+            // ביצוע מחיקה
+            deleteOption.addEventListener('click', () => {
+                contextMenu.style.display = 'none';
+                if (!targetKeyToDelete) return;
+
+                if (confirm('האם אתה בטוח שברצונך למחוק את הלייב וכל הנושאים שלו?')) {
+                    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                        firebase.database().ref('live_tracker/' + targetKeyToDelete).remove((error) => {
+                            if (!error) {
+                                viewLiveModal.classList.add('hidden');
+                                loadCalendarData();
+                            } else {
+                                alert('שגיאה במחיקת הנתונים.');
+                            }
+                        });
+                    } else {
+                        localStorage.removeItem(targetKeyToDelete);
+                        viewLiveModal.classList.add('hidden');
+                        loadCalendarData();
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
